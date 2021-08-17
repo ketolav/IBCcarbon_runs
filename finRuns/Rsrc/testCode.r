@@ -12,6 +12,8 @@ thinFactX=0.25
 devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/finRuns/Rsrc/settings.r")
 source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/general/functions.r")
 
+
+pTapio[,,,4] <- pTapio[,,,4] * 5
 # setX=1
 nSitesRun = 20000
 nSamples <- ceiling(dim(data.all)[1]/nSitesRun)
@@ -24,7 +26,7 @@ ops <- split(data.all, sample(1:nSamples, nrow(data.all), replace=T))
 
 print(paste("start sample ID",sampleID))
 sampleX <- ops[[sampleID]]
-
+pTapio
 
 ###check for NAS
 # load("/scratch/project_2000994/PREBASruns/finRuns/rasters/forCent12/NApoints/NApoints2017-2025.rdata")
@@ -200,14 +202,15 @@ if(harscen!="Base"){
 ####save for testing
 # save(initPrebas,HarvLim1,minDharvX,clcutArX,
 #      sile="test.rdata")
+HarvLimX <- HarvLim1[1:nYears,]
 
-region0 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLim1),
+region0 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
                         minDharv = minDharvX,clearcutAreas =clcutArX,
                         compHarv=0, thinFact=thinFactX)
-region1 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLim1),
+region1 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
                         minDharv = minDharvX,clearcutAreas =clcutArX,
                         compHarv=1, thinFact=thinFactX)
-region2 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLim1),
+region2 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
                        minDharv = minDharvX,clearcutAreas =clcutArX,
                        compHarv=2, thinFact=thinFactX)
 
@@ -226,8 +229,10 @@ for(ix in 1:3){
 areaThin <- areaClcut <- volThin <- volClcut <- rep(NA,nYears)
 harvested <- apply(region$multiOut[,,37,,1],1:2,sum)
 vols <- apply(region$multiOut[,,30,,1],1:2,sum)
-clcuts <- data.table(which(harvested>0 & vols==0,arr.ind=T))
-thin <- data.table(which(harvested>0 & vols>0,arr.ind=T))
+clcuts1 <- data.table(which(harvested>0 & vols==0,arr.ind=T))
+clcuts <- data.table(which(region$multiOut[,,1,2,2]>0,arr.ind=T))
+thin1 <- data.table(which(harvested>0 & vols>0,arr.ind=T))
+thin <- data.table(which(region$multiOut[,,1,1,2]>0,arr.ind=T))
 setnames(clcuts,c("siteID","year"))
 setnames(thin,c("siteID","year"))
 
@@ -260,45 +265,51 @@ save(maakV,ggMeanAll,regThinarea,clcutAreaAll,regThinVolAll,regThinareaAll,
 ###plot #1
 ####compare roundWood
 #compare harvest limts
-par(mfrow=c(3,2))
-ylim=range(regRoundWoodAll,roundWood*1000)
-plot(regRoundWoodAll[,1],pch=20,col=2,ylim=ylim, main="roundWood")
-points(regRoundWoodAll[,2],pch=20,col=3)
-points(regRoundWoodAll[,3],pch=20,col=4)
-points(roundWood[1:nYears]*1000)
-legend("bottomright",legend = c("noCom","clcut","thin","ref"),
-       pch=c(20,20,20,1),col=c(2:4,1))
-####compare energyWood
-ylim=range(enWoodAll* rescalFactor,HarvLim1[,2] * rescalFactor)
-plot(enWoodAll[,1] * rescalFactor,main="energyWood",col=2,pch=20,ylim=ylim)
-points(enWoodAll[,2] * rescalFactor,col=3,pch=20)
-points(enWoodAll[,3] * rescalFactor,col=4,pch=20)
-points(HarvLim1[,2] * rescalFactor)
-##compare areas clearcutted
-ylim=range(clcutAreaAll* rescalFactor,
-           region$clearcutAreas[,1]*rescalFactor)
-plot(clcutAreaAll[,1] * rescalFactor,main="area clearcuts",col=2,pch=20,ylim=ylim)
-points(clcutAreaAll[,2] * rescalFactor,col=3,pch=20)
-points(clcutAreaAll[,3] * rescalFactor,col=4,pch=20)
-points(region$clearcutAreas[,1]*rescalFactor)
-
-yrange <- range(regThinareaAll,thinAr)
-plot(regThinareaAll[,1],ylim=yrange,main="area thinning",col=2,pch=20)
-points(regThinareaAll[,2],col=3,pch=20)
-points(regThinareaAll[,3],col=4,pch=20)
-points(thinAr)
-points(noClcutAr,col=5)
-
-yrange <- range(ggMeanAll)
-plot(ggMeanAll[,1], main="gross growth",ylim=yrange,col=2,pch=20)
-points(ggMeanAll[,2],col=3,pch=20)
-points(ggMeanAll[,3],col=4,pch=20)
-
+plot1 <- function(){
+  par(mfrow=c(3,2))
+  ylim=range(regRoundWoodAll,roundWood*1000)
+  plot(regRoundWoodAll[,1],pch=20,col=2,ylim=ylim, main="roundWood")
+  points(regRoundWoodAll[,2],pch=20,col=3)
+  points(regRoundWoodAll[,3],pch=20,col=4)
+  points(roundWood[1:nYears]*1000)
+  legend("bottomright",legend = c("noCom","clcut","thin","ref"),
+         pch=c(20,20,20,1),col=c(2:4,1))
+  ####compare energyWood
+  ylim=range(enWoodAll* rescalFactor,HarvLim1[,2] * rescalFactor)
+  plot(enWoodAll[,1] * rescalFactor,main="energyWood",col=2,pch=20,ylim=ylim)
+  points(enWoodAll[,2] * rescalFactor,col=3,pch=20)
+  points(enWoodAll[,3] * rescalFactor,col=4,pch=20)
+  points(HarvLim1[,2] * rescalFactor)
+  ##compare areas clearcutted
+  ylim=range(clcutAreaAll* rescalFactor,
+             region$clearcutAreas[,1]*rescalFactor)
+  plot(clcutAreaAll[,1] * rescalFactor,main="area clearcuts",col=2,pch=20,ylim=ylim)
+  points(clcutAreaAll[,2] * rescalFactor,col=3,pch=20)
+  points(clcutAreaAll[,3] * rescalFactor,col=4,pch=20)
+  points(region$clearcutAreas[,1]*rescalFactor)
+  
+  yrange <- range(regThinareaAll,thinAr)
+  plot(regThinareaAll[,1],ylim=yrange,main="area thinning",col=2,pch=20)
+  points(regThinareaAll[,2],col=3,pch=20)
+  points(regThinareaAll[,3],col=4,pch=20)
+  points(thinAr)
+  points(noClcutAr,col=5)
+  
+  yrange <- range(ggMeanAll)
+  plot(ggMeanAll[,1], main="gross growth",ylim=yrange,col=2,pch=20)
+  points(ggMeanAll[,2],col=3,pch=20)
+  points(ggMeanAll[,3],col=4,pch=20)
+}
 ###plot #2
-par(mfrow=c(3,1))
-volumes <- rbind(regThinVolAll[,1],regClcutVolAll[,1])
-barplot(volumes,main="volumes thin/clcut NOcomp",legend=c("thin","clcut"))
-volumes <- rbind(regThinVolAll[,2],regClcutVolAll[,2])
-barplot(volumes,main="volumes thin/clcut ClCut",legend=c("thin","clcut"))
-volumes <- rbind(regThinVolAll[,3],regClcutVolAll[,3])
-barplot(volumes,main="volumes thin/clcut thinning",legend=c("thin","clcut"))
+plot2 <- function(){
+  par(mfrow=c(3,1))
+  volumes <- rbind(regThinVolAll[,1],regClcutVolAll[,1])
+  barplot(volumes,main="volumes thin/clcut NOcomp",legend=c("thin","clcut"))
+  volumes <- rbind(regThinVolAll[,2],regClcutVolAll[,2])
+  barplot(volumes,main="volumes thin/clcut ClCut",legend=c("thin","clcut"))
+  volumes <- rbind(regThinVolAll[,3],regClcutVolAll[,3])
+  barplot(volumes,main="volumes thin/clcut thinning",legend=c("thin","clcut"))
+}
+
+plot1()
+plot2()
