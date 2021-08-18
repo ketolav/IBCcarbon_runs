@@ -13,7 +13,7 @@ devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_
 source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/general/functions.r")
 
 
-pTapio[,,,4] <- pTapio[,,,4] * 5
+# pTapio[,,,4] <- pTapio[,,,4] * 5
 # setX=1
 nSitesRun = 20000
 nSamples <- ceiling(dim(data.all)[1]/nSitesRun)
@@ -199,20 +199,25 @@ if(harscen!="Base"){
   initPrebas$soilC[,1,,,] <- initSoilC
 }
 
-####save for testing
-# save(initPrebas,HarvLim1,minDharvX,clcutArX,
-#      sile="test.rdata")
+
 HarvLimX <- HarvLim1[1:nYears,]
 
+####save for testing
+# save(initPrebas,HarvLimX,minDharvX,clcutArX,
+#      file="test.rdata")
+print("initialized")
 region0 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
                         minDharv = minDharvX,clearcutAreas =clcutArX,
                         compHarv=0, thinFact=thinFactX)
+print("region0 done")
 region1 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
                         minDharv = minDharvX,clearcutAreas =clcutArX,
                         compHarv=1, thinFact=thinFactX)
+print("region1 done")
 region2 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
                        minDharv = minDharvX,clearcutAreas =clcutArX,
                        compHarv=2, thinFact=thinFactX)
+print("region2 done")
 
 ####roundWood is totHarv
 ###HarvLim1 defines the harvesting limits (matrix with 2 columns). 
@@ -229,9 +234,9 @@ for(ix in 1:3){
 areaThin <- areaClcut <- volThin <- volClcut <- rep(NA,nYears)
 harvested <- apply(region$multiOut[,,37,,1],1:2,sum)
 vols <- apply(region$multiOut[,,30,,1],1:2,sum)
-clcuts1 <- data.table(which(harvested>0 & vols==0,arr.ind=T))
+clcutsOld <- data.table(which(harvested>0 & vols==0,arr.ind=T))
 clcuts <- data.table(which(region$multiOut[,,1,2,2]>0,arr.ind=T))
-thin1 <- data.table(which(harvested>0 & vols>0,arr.ind=T))
+thinOld <- data.table(which(harvested>0 & vols>0,arr.ind=T))
 thin <- data.table(which(region$multiOut[,,1,1,2]>0,arr.ind=T))
 setnames(clcuts,c("siteID","year"))
 setnames(thin,c("siteID","year"))
