@@ -156,7 +156,13 @@ runModel <- function(sampleID,sampleRun=FALSE){
         if(!is.na(clcutArX)){
           print("calculating clearcutting areas")
           clcutArX <- clcutAr * sum(areas)/sum(data.all$area)
-          clcutArX <- clcutArX[1:nYears]
+          clcutArX <- cbind(clcutArX[1:nYears],0.)
+          tendX <- tendingAr * sum(areas)/sum(data.all$area)
+          tendX <- cbind(tendX[1:nYears],0.)
+          fThinX <- firstThinAr * sum(areas)/sum(data.all$area)
+          fThinX <- cbind(fThinX[1:nYears],0.)
+          cutArX <- cbind(clcutArX,tendX)
+          cutArX <- cbind(cutArX,fThinX)
         }
         # initPrebas$energyCut <- rep(0.,length(initPrebas$energyCut))
         # HarvLim1 <- rep(0,2)
@@ -535,11 +541,15 @@ create_prebas_input.f = function(r_no, clim, data.sample, nYears, startingYear=0
   defaultThin=as.numeric(1-data.sample[, cons])
   energyCut <- ClCut <- as.numeric(1-data.sample[, cons])
   ## Set to match climate data years
+  if(!exists("ftTapioParX")) ftTapioParX = ftTapio
+  if(!exists("tTapioParX")) tTapioParX = tTapio
   initPrebas <- InitMultiSite(nYearsMS = rep(nYears,nSites),siteInfo=siteInfo,
                               # litterSize = litterSize,#pAWEN = parsAWEN,
                               defaultThin=defaultThin,
                               ClCut = ClCut, areas =areas,
                               energyCut = energyCut, 
+                              ftTapioPar = ftTapioParX,
+                              tTapioPar = tTapioParX,
                               multiInitVar = as.array(initVar),
                               PAR = clim$PAR[, 1:(nYears*365)],
                               TAir=clim$TAir[, 1:(nYears*365)],

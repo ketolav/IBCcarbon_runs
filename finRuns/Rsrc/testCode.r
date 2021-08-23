@@ -1,5 +1,4 @@
-# for(sampleID in 1:73){
-  
+# devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/finRuns/Rsrc/testCode.r")
 
 r_no <- regions <- 1
 sampleID <- 1#498 #136
@@ -8,12 +7,20 @@ regSets = "maakunta"
 minDharvX <- 15
 compHarvX=0.
 thinFactX=0.25
+NotTapio <- FALSE##flag to switch off precommercial thinnings (TRUE) FALSE otherwise
+NoftTapio <- FALSE ##flag to switch off first thinning (TRUE) FALSE otherwise
 
 devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/finRuns/Rsrc/settings.r")
 source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/general/functions.r")
+# load("test.rdata")
+# region2 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
+#                         minDharv = minDharvX,cutAreas =clcutArX,
+#                         compHarv=3, thinFact=thinFactX)
+# plot(apply(region2$multiOut[930,,13,,1],1,sum))
 
+if(NoftTapio) ftTapioParX  <- ftTapio * 1e5  ##switch off first thinning
+if(NotTapio) tTapioParX  <- tTapio * 1e5  ##switch off precommercial thinning 
 
-# pTapio[,,,4] <- pTapio[,,,4] * 5
 # setX=1
 nSitesRun = 20000
 nSamples <- ceiling(dim(data.all)[1]/nSitesRun)
@@ -26,7 +33,6 @@ ops <- split(data.all, sample(1:nSamples, nrow(data.all), replace=T))
 
 print(paste("start sample ID",sampleID))
 sampleX <- ops[[sampleID]]
-pTapio
 
 ###check for NAS
 # load("/scratch/project_2000994/PREBASruns/finRuns/rasters/forCent12/NApoints/NApoints2017-2025.rdata")
@@ -186,7 +192,13 @@ if(regSets!="maakunta"){
 
 ###calculate clearcutting area for the sample
 clcutArX <- clcutAr * sum(areas)/sum(data.all$area)
-clcutArX <- clcutArX[1:nYears]
+clcutArX <- cbind(clcutArX[1:nYears],0.)
+tendX <- tendingAr * sum(areas)/sum(data.all$area)
+tendX <- cbind(tendX[1:nYears],0.)
+fThinX <- firstThinAr * sum(areas)/sum(data.all$area)
+fThinX <- cbind(fThinX[1:nYears],0.)
+cutArX <- cbind(clcutArX,tendX)
+cutArX <- cbind(cutArX,fThinX)
 
 # initPrebas$energyCut <- rep(0.,length(initPrebas$energyCut))
 # HarvLim1 <- rep(0,2)
@@ -203,20 +215,20 @@ if(harscen!="Base"){
 HarvLimX <- HarvLim1[1:nYears,]
 
 ####save for testing
-# save(initPrebas,HarvLimX,minDharvX,clcutArX,
+# save(initPrebas,HarvLimX,minDharvX,cutArX,
 #      file="test.rdata")
 print("initialized")
 region0 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
-                        minDharv = minDharvX,clearcutAreas =clcutArX,
+                        minDharv = minDharvX,cutAreas =cutArX,
                         compHarv=0, thinFact=thinFactX)
 print("region0 done")
 region1 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
-                        minDharv = minDharvX,clearcutAreas =clcutArX,
+                        minDharv = minDharvX,cutAreas =cutArX,
                         compHarv=1, thinFact=thinFactX)
 print("region1 done")
 region2 <- regionPrebas(initPrebas, HarvLim = as.numeric(HarvLimX),
-                       minDharv = minDharvX,clearcutAreas =clcutArX,
-                       compHarv=2, thinFact=thinFactX)
+                       minDharv = minDharvX,cutAreas =cutArX,
+                       compHarv=3, thinFact=thinFactX)
 print("region2 done")
 
 ####roundWood is totHarv
@@ -227,24 +239,60 @@ ggMeanAll <- regThinarea <- clcutAreaAll <- regThinVolAll <- regThinareaAll <-
   regClcutVolAll<- enWoodAll <- regRoundWoodAll <- matrix(NA, nYears,3)
 rescalFactor <- sum(data.all$area)/sum(sampleX$area)
 
+regThinAreaX <- regThinVolX <- array(NA,dim=c(nYears,4,3))
+regClcutAreaX <- regClcutVolX <- array(NA,dim=c(nYears,2,3))
+
 for(ix in 1:3){
   region <- get(regX[ix])
 
 ####calculate thinned areas
 areaThin <- areaClcut <- volThin <- volClcut <- rep(NA,nYears)
+areaThinX <- volThinX <- matrix(NA,nYears,4)
+areaClcutX <- volClcutX <- matrix(NA,nYears,2)
+
 harvested <- apply(region$multiOut[,,37,,1],1:2,sum)
 vols <- apply(region$multiOut[,,30,,1],1:2,sum)
 clcutsOld <- data.table(which(harvested>0 & vols==0,arr.ind=T))
-clcuts <- data.table(which(region$multiOut[,,1,2,2]>0,arr.ind=T))
+clcuts <- data.table(which(region$multiOut[,,2,1,2]>0,arr.ind=T))
+clcuts1 <- data.table(which(region$multiOut[,,2,1,2]==1,arr.ind=T))
+clcuts2 <- data.table(which(region$multiOut[,,2,1,2]==20,arr.ind=T))
 thinOld <- data.table(which(harvested>0 & vols>0,arr.ind=T))
 thin <- data.table(which(region$multiOut[,,1,1,2]>0,arr.ind=T))
+thin1 <- data.table(which(region$multiOut[,,1,1,2]==1,arr.ind=T))
+thin2 <- data.table(which(region$multiOut[,,1,1,2]==2,arr.ind=T))
+thin3 <- data.table(which(region$multiOut[,,1,1,2]==3,arr.ind=T))
+thin4 <- data.table(which(region$multiOut[,,1,1,2]==4,arr.ind=T))
 setnames(clcuts,c("siteID","year"))
+setnames(clcuts1,c("siteID","year"))
+setnames(clcuts2,c("siteID","year"))
 setnames(thin,c("siteID","year"))
+setnames(thin1,c("siteID","year"))
+setnames(thin2,c("siteID","year"))
+setnames(thin3,c("siteID","year"))
+setnames(thin4,c("siteID","year"))
 
 for(i in 1:nYears) areaThin[i] <- sum(region$areas[thin[year==i]$siteID])
 for(i in 1:nYears) areaClcut[i] <- sum(region$areas[clcuts[year==i]$siteID])
 for(i in 1:nYears) volThin[i] <- sum(region$areas[thin[year==i]$siteID] * harvested[thin[year==i]$siteID,i])
 for(i in 1:nYears) volClcut[i] <- sum(region$areas[clcuts[year==i]$siteID] * harvested[clcuts[year==i]$siteID,i])
+
+for(i in 1:nYears){
+  areaThinX[i,1] <- sum(region$areas[thin1[year==i]$siteID])
+  areaThinX[i,2] <- sum(region$areas[thin2[year==i]$siteID])
+  areaThinX[i,3] <- sum(region$areas[thin3[year==i]$siteID])
+  areaThinX[i,4] <- sum(region$areas[thin4[year==i]$siteID])
+  
+  areaClcutX[i,1] <- sum(region$areas[clcuts1[year==i]$siteID])
+  areaClcutX[i,2] <- sum(region$areas[clcuts2[year==i]$siteID])
+  
+  volThinX[i,1] <- sum(region$areas[thin1[year==i]$siteID] * harvested[thin1[year==i]$siteID,i])
+  volThinX[i,2] <- sum(region$areas[thin2[year==i]$siteID] * harvested[thin2[year==i]$siteID,i])
+  volThinX[i,3] <- sum(region$areas[thin3[year==i]$siteID] * harvested[thin3[year==i]$siteID,i])
+  volThinX[i,4] <- sum(region$areas[thin4[year==i]$siteID] * harvested[thin4[year==i]$siteID,i])
+  
+  volClcutX[i,1] <- sum(region$areas[clcuts1[year==i]$siteID] * harvested[clcuts1[year==i]$siteID,i])
+  volClcutX[i,2] <- sum(region$areas[clcuts2[year==i]$siteID] * harvested[clcuts2[year==i]$siteID,i])
+} 
 
 regThinarea <- areaThin*rescalFactor
 regClcutArea <- areaClcut*rescalFactor
@@ -254,7 +302,15 @@ regClcutVolAll[,ix] <- volClcut*rescalFactor
 regThinareaAll[,ix] <- regThinarea
 regRoundWoodAll[,ix] <- regRoundWood
 enWoodAll[,ix] <- apply(region$multiEnergyWood[,,,1],2,sum)
-clcutAreaAll[,ix] <- region$clearcutAreas[,2]
+clcutAreaAll[,ix] <- region$cutAreas[,2]
+
+
+regThinAreaX[,,ix] <- areaThinX*rescalFactor
+regClcutAreaX[,,ix] <- areaClcutX*rescalFactor
+regThinVolX[,,ix] <- volThinX*rescalFactor
+regClcutVolX[,,ix] <- volClcutX*rescalFactor
+# clcutAreaAll[,ix] <- region$cutAreas[,2]
+
 
 gg <- apply(region$multiOut[,,43,,1],1:2,sum)
 for(i in 1:nYears){
@@ -280,18 +336,18 @@ plot1 <- function(){
   legend("bottomright",legend = c("noCom","clcut","thin","ref"),
          pch=c(20,20,20,1),col=c(2:4,1))
   ####compare energyWood
-  ylim=range(enWoodAll* rescalFactor,HarvLim1[,2] * rescalFactor)
+  ylim=range(enWoodAll* rescalFactor,HarvLimX[,2] * rescalFactor)
   plot(enWoodAll[,1] * rescalFactor,main="energyWood",col=2,pch=20,ylim=ylim)
   points(enWoodAll[,2] * rescalFactor,col=3,pch=20)
   points(enWoodAll[,3] * rescalFactor,col=4,pch=20)
   points(HarvLim1[,2] * rescalFactor)
   ##compare areas clearcutted
   ylim=range(clcutAreaAll* rescalFactor,
-             region$clearcutAreas[,1]*rescalFactor)
+             region$cutAreas[,1]*rescalFactor)
   plot(clcutAreaAll[,1] * rescalFactor,main="area clearcuts",col=2,pch=20,ylim=ylim)
   points(clcutAreaAll[,2] * rescalFactor,col=3,pch=20)
   points(clcutAreaAll[,3] * rescalFactor,col=4,pch=20)
-  points(region$clearcutAreas[,1]*rescalFactor)
+  points(region$cutAreas[,1]*rescalFactor)
   
   yrange <- range(regThinareaAll,thinAr)
   plot(regThinareaAll[,1],ylim=yrange,main="area thinning",col=2,pch=20)
@@ -316,5 +372,74 @@ plot2 <- function(){
   barplot(volumes,main="volumes thin/clcut thinning",legend=c("thin","clcut"))
 }
 
+plot2 <- function(){
+  par(mfrow=c(3,1))
+  volumes <- rbind(regThinVolAll[,1],regClcutVolAll[,1])
+  barplot(volumes,main="volumes thin/clcut NOcomp",legend=c("thin","clcut"))
+  volumes <- rbind(regThinVolAll[,2],regClcutVolAll[,2])
+  barplot(volumes,main="volumes thin/clcut ClCut",legend=c("thin","clcut"))
+  volumes <- rbind(regThinVolAll[,3],regClcutVolAll[,3])
+  barplot(volumes,main="volumes thin/clcut thinning",legend=c("thin","clcut"))
+}
+
+plot3 <- function(){
+  par(mfrow=c(3,1))
+  volumes <- t(regThinAreaX[,,1])
+  barplot(volumes,main="thin areas NOcomp",legend=c("pre-com","firstT","thin","compThin"))
+  volumes <- t(regThinAreaX[,,2])
+  barplot(volumes,main="thin areas ClCutComp",legend=c("pre-com","firstT","thin","compThin"))
+  volumes <- t(regThinAreaX[,,3])
+  barplot(volumes,main="thin areas thinComp",legend=c("pre-com","firstT","thin","compThin"))
+}
+
+regStat <- function(modOut,varX, funX){
+  v0 <- apply(modOut$multiOut[,,varX,,1],1:2,funX)
+  v1 <- colSums(sweep(v0,1,areas,"*"))/sum(data.sample$area)
+  return(v1)
+}
+v0 <- regStat(region0,30,"sum")
+v1 <- regStat(region1,30,"sum")
+v2 <- regStat(region2,30,"sum")
+gpp0 <- regStat(region0,44,"sum")
+gpp1 <- regStat(region1,44,"sum")
+gpp2 <- regStat(region2,44,"sum")
+
+plot4 <- function(){
+  par(mfrow=c(3,2))
+  ylim=range(0.,region0$cutAreas[,3:4]*rescalFactor,
+             region1$cutAreas[,4]*rescalFactor,
+             region2$cutAreas[,4]*rescalFactor)
+  plot(region0$cutAreas[,3]*rescalFactor,ylim=ylim, 
+       main="pre-com areas",ylab="ha")
+  points(region0$cutAreas[,4]*rescalFactor,pch=20,col=2)
+  points(region1$cutAreas[,4]*rescalFactor,pch=20,col=3)
+  points(region2$cutAreas[,4]*rescalFactor,pch=20,col=4)
+  legend("bottomright",legend = c("noCom","clcut","thin","ref"),
+         pch=c(20,20,20,1),col=c(2:4,1))
+  
+  ylim=range(0.,region0$cutAreas[,5:6]*rescalFactor,
+             region1$cutAreas[,6]*rescalFactor,
+             region2$cutAreas[,6]*rescalFactor)
+  plot(region0$cutAreas[,5]*rescalFactor,ylim=ylim, 
+       main="1st thin areas",ylab="ha")
+  points(region0$cutAreas[,6]*rescalFactor,pch=20,col=2)
+  points(region1$cutAreas[,6]*rescalFactor,pch=20,col=3)
+  points(region2$cutAreas[,6]*rescalFactor,pch=20,col=4)
+  
+  ylim=range(0.,v0,v1,v2)
+  plot(v0,ylim=ylim, main="volume",ylab="m3/ha",pch=20,col=2)
+  points(v1,pch=20,col=3)
+  points(v2,pch=20,col=4)
+
+  ylim=range(0.,gpp0,gpp1,gpp2)
+  plot(gpp0,ylim=ylim, main="volume",ylab="m3/ha",pch=20,col=2)
+  points(gpp1,pch=20,col=3)
+  points(gpp2,pch=20,col=4)
+  
+  
+}
+
 plot1()
 plot2()
+plot3()
+plot4()
