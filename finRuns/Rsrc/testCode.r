@@ -1,11 +1,15 @@
 # devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/finRuns/Rsrc/testCode.r")
-
-r_no <- regions <- 1
+maaks <- c(1,3)#1:19 
+for(klk in maaks){
+  
+# klk <- 3
+r_no <- regions <- klk
 sampleID <- 1#498 #136
 harvestscenarios <- "Base"
 regSets = "maakunta"
 minDharvX <- 15
 compHarvX=0.
+HcFactor=0.8
 thinFactX=0.25
 NotTapio <- FALSE##flag to switch off precommercial thinnings (TRUE) FALSE otherwise
 NoftTapio <- FALSE ##flag to switch off first thinning (TRUE) FALSE otherwise
@@ -400,6 +404,12 @@ regStat <- function(modOut,varX, funX){
 v0 <- regStat(region0,30,"sum")
 v1 <- regStat(region1,30,"sum")
 v2 <- regStat(region2,30,"sum")
+npp0 <- regStat(region0,18,"sum")
+npp1 <- regStat(region1,18,"sum")
+npp2 <- regStat(region2,18,"sum")
+ba0 <- regStat(region0,13,"sum")
+ba1 <- regStat(region1,13,"sum")
+ba2 <- regStat(region2,13,"sum")
 gpp0 <- regStat(region0,44,"sum")
 gpp1 <- regStat(region1,44,"sum")
 gpp2 <- regStat(region2,44,"sum")
@@ -432,14 +442,31 @@ plot4 <- function(){
   points(v2,pch=20,col=4)
 
   ylim=range(0.,gpp0,gpp1,gpp2)
-  plot(gpp0,ylim=ylim, main="volume",ylab="m3/ha",pch=20,col=2)
+  plot(gpp0,ylim=ylim, main="GPP",ylab="gC/m2",pch=20,col=2)
   points(gpp1,pch=20,col=3)
   points(gpp2,pch=20,col=4)
   
+  ylim=range(0.,npp0,npp1,npp2)
+  plot(npp0,ylim=ylim, main="npp",ylab="gC/m2",pch=20,col=2)
+  points(npp1,pch=20,col=3)
+  points(npp2,pch=20,col=4)
+  
+  ylim=range(0.,ba0,ba1,ba2)
+  plot(ba0,ylim=ylim, main="ba",ylab="gC/m2",pch=20,col=2)
+  points(ba1,pch=20,col=3)
+  points(ba2,pch=20,col=4)
   
 }
 
+pdf(paste0("plots_",klk,"_HcF",HcFactor,".pdf"))
 plot1()
 plot2()
 plot3()
 plot4()
+dev.off()
+print(klk)
+rm(list=ls())
+gc()
+}
+
+# maakNam <- read.table("/scratch/project_2000994/PREBASruns/metadata/maakunta/maakunta_numbers.txt")
