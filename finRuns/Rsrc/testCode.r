@@ -1,19 +1,25 @@
 # devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/finRuns/Rsrc/testCode.r")
-maaks <- c(1,3)#1:19 
+if(!exists("maaks")) maaks <- 1:19 
+if(!exists("sampleID")) sampleID <- 1#498 #136
+if(!exists("harvestscenarios")) harvestscenarios <- "Base"
+if(!exists("regSets")) regSets = "maakunta"
+if(!exists("minDharvX")) minDharvX <- 15
+if(!exists("compHarvX")) compHarvX=0.
+if(!exists("thinFactX")) thinFactX=0.25
+if(!exists("HcFactor")) HcFactor = 1    ##1, 0.8, 1.2, 0.8, 1.2
+if(!exists("baFact")) baFact = 1.0    ##1, 1.1, 1.1,  1,   1
+if(!exists("dbhFact")) dbhFact = 1.0   ##1,  1 ,   1, 1.1, 1.1
+if(!exists("NotTapio")) NotTapio <- FALSE##flag to switch off precommercial thinnings (TRUE) FALSE otherwise
+if(!exists("NoftTapio")) NoftTapio <- FALSE ##flag to switch off first thinning (TRUE) FALSE otherwise
+if(!exists("ggCountry")) ggCountry <- array(NA,dim=c(36,3,19))
+
+noRmList <- c(ls(),"noRmList")
+
 for(klk in maaks){
   
 # klk <- 3
 r_no <- regions <- klk
-sampleID <- 1#498 #136
-harvestscenarios <- "Base"
-regSets = "maakunta"
-minDharvX <- 15
-compHarvX=0.
-HcFactor=0.8
-thinFactX=0.25
-NotTapio <- FALSE##flag to switch off precommercial thinnings (TRUE) FALSE otherwise
-NoftTapio <- FALSE ##flag to switch off first thinning (TRUE) FALSE otherwise
-
+  
 devtools::source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/finRuns/Rsrc/settings.r")
 source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/master/general/functions.r")
 # load("test.rdata")
@@ -22,6 +28,8 @@ source_url("https://raw.githubusercontent.com/ForModLabUHel/IBCcarbon_runs/maste
 #                         compHarv=3, thinFact=thinFactX)
 # plot(apply(region2$multiOut[930,,13,,1],1,sum))
 
+data.all$ba = data.all$ba * baFact
+data.all$dbh = data.all$dbh * dbhFact
 if(NoftTapio) ftTapioParX  <- ftTapio * 1e5  ##switch off first thinning
 if(NotTapio) tTapioParX  <- tTapio * 1e5  ##switch off precommercial thinning 
 
@@ -215,7 +223,6 @@ if(harscen!="Base"){
   initPrebas$soilC[,1,,,] <- initSoilC
 }
 
-
 HarvLimX <- HarvLim1[1:nYears,]
 
 ####save for testing
@@ -324,8 +331,10 @@ ggMeanAll[,ix] <- colSums(gg)
 
 }
 
-save(maakV,ggMeanAll,regThinarea,clcutAreaAll,regThinVolAll,regThinareaAll,
-     regClcutVolAll,enWoodAll,regRoundWoodAll,file= "...")
+# save(maakV,ggMeanAll,regThinarea,clcutAreaAll,regThinVolAll,regThinareaAll,
+#      regClcutVolAll,enWoodAll,regRoundWoodAll,file= "...")
+
+SDIinit <- reinekeMSinit(initPrebas$multiInitVar)
 
 ###plot #1
 ####compare roundWood
@@ -360,10 +369,7 @@ plot1 <- function(){
   points(thinAr)
   points(noClcutAr,col=5)
   
-  yrange <- range(ggMeanAll)
-  plot(ggMeanAll[,1], main="gross growth",ylim=yrange,col=2,pch=20)
-  points(ggMeanAll[,2],col=3,pch=20)
-  points(ggMeanAll[,3],col=4,pch=20)
+  hist(SDIinit)
 }
 ###plot #2
 plot2 <- function(){
@@ -397,8 +403,8 @@ plot3 <- function(){
 }
 
 regStat <- function(modOut,varX, funX){
-  v0 <- apply(modOut$multiOut[,,varX,,1],1:2,funX)
-  v1 <- colSums(sweep(v0,1,areas,"*"))/sum(data.sample$area)
+  v0 <- apply(modOut$multiOut[,,varX,,1],1:2,funX,na.rm=T)
+  v1 <- colSums(sweep(v0,1,areas,"*"))/sum(data.sample$area,na.rm=T)
   return(v1)
 }
 v0 <- regStat(region0,30,"sum")
@@ -440,7 +446,9 @@ plot4 <- function(){
   plot(v0,ylim=ylim, main="volume",ylab="m3/ha",pch=20,col=2)
   points(v1,pch=20,col=3)
   points(v2,pch=20,col=4)
-
+  stats[regID==0,points(Vtot/ForLandTot,col=2)]
+  stats[regID==r_no,points(Vtot/ForLandTot,col=1)]
+  
   ylim=range(0.,gpp0,gpp1,gpp2)
   plot(gpp0,ylim=ylim, main="GPP",ylab="gC/m2",pch=20,col=2)
   points(gpp1,pch=20,col=3)
@@ -458,15 +466,111 @@ plot4 <- function(){
   
 }
 
-pdf(paste0("plots_",klk,"_HcF",HcFactor,".pdf"))
+
+Ws0 <- regStat(region0,31,"sum")
+Ws1 <- regStat(region1,31,"sum")
+Ws2 <- regStat(region2,31,"sum")
+Wf0 <- regStat(region0,33,"sum")
+Wf1 <- regStat(region1,33,"sum")
+Wf2 <- regStat(region2,33,"sum")
+Wb0 <- regStat(region0,24,"sum")
+Wb1 <- regStat(region1,24,"sum")
+Wb2 <- regStat(region2,24,"sum")
+Wdb0 <- regStat(region0,51,"sum")
+Wdb1 <- regStat(region1,51,"sum")
+Wdb2 <- regStat(region2,51,"sum")
+Wfb0 <- Wf0+Wb0+Wdb0
+Wfb1 <- Wf1+Wb1+Wdb1
+Wfb2 <- Wf2+Wb2+Wdb2
+Wcr0 <- regStat(region0,32,"sum")
+Wcr1 <- regStat(region1,32,"sum")
+Wcr2 <- regStat(region2,32,"sum")
+Wfr0 <- regStat(region0,25,"sum")
+Wfr1 <- regStat(region1,25,"sum")
+Wfr2 <- regStat(region2,25,"sum")
+Wtot0 <- Wfr0 + Wcr0 + Wfb0 + Ws0+Wdb0
+Wtot1 <- Wfr1 + Wcr1 + Wfb1 + Ws1+Wdb1
+Wtot2 <- Wfr2 + Wcr2 + Wfb2 + Ws2+Wdb2
+
+plot5 <- function(){
+  par(mfrow=c(3,2))
+
+  mreg <- as.numeric(stats[regID==0,Vtot/ForLandTot])
+  mcount <- as.numeric(stats[regID==r_no,Vtot/ForLandTot])
+  ylim=range(0.,v0,v1,v2,mreg,mcount,na.rm=T)
+  plot(v0,ylim=ylim, main="volume",ylab="m3/ha",pch=20,col=2)
+  points(v1,pch=20,col=3)
+  points(v2,pch=20,col=4)
+  points(mreg,col=2)
+  points(mcount,col=1)
+  
+  mreg <- as.numeric(stats[regID==0,IncrTot])
+  mcount <- as.numeric(stats[regID==r_no,IncrTot])
+  yrange=range(ggMeanAll,mreg,mcount,na.rm=T)
+  plot(ggMeanAll[,1], main="gross growth",ylim=yrange,col=2,pch=20)
+  points(ggMeanAll[,2],col=3,pch=20)
+  points(ggMeanAll[,3],col=4,pch=20)
+  stats[regID==0,points(IncrTot,col=2)]
+  stats[regID==r_no,points(IncrTot,col=1)]
+  
+  mreg <- as.numeric(stats[regID==0,WfbTot/ForLandTot])
+  mcount <- as.numeric(stats[regID==r_no,WfbTot/ForLandTot])
+  ylim=range(Wfb0,Wfb1,Wfb2,mreg,mcount,na.rm=T)
+  plot(Wfb0,ylim=ylim, main="Foliage + Branches",ylab="kgC/ha",pch=20,col=2)
+  points(Wfb1,pch=20,col=3)
+  points(Wfb2,pch=20,col=4)
+  stats[regID==0,points(WfbTot/ForLandTot,col=2)]
+  stats[regID==r_no,points(WfbTot/ForLandTot,col=1)]  
+
+  mreg <- as.numeric(stats[regID==0,WsTot/ForLandTot])
+  mcount <- as.numeric(stats[regID==r_no,WsTot/ForLandTot])
+  ylim=range(Ws0,Ws1,Ws2,mreg,mcount,na.rm=T)
+  plot(Ws0,ylim=ylim, main="Ws",ylab="kgC/ha",pch=20,col=2)
+  points(Ws1,pch=20,col=3)
+  points(Ws2,pch=20,col=4)
+  stats[regID==0,points(WsTot/ForLandTot,col=2)]
+  stats[regID==r_no,points(WsTot/ForLandTot,col=1)]  
+  
+  mreg <- as.numeric(stats[regID==0,WcrTot/ForLandTot])
+  mcount <- as.numeric(stats[regID==r_no,WcrTot/ForLandTot])
+  ylim=range(Wcr0,Wcr1,Wcr2,mreg,mcount,na.rm=T)
+  plot(Wcr0,ylim=ylim, main="Wcr",ylab="kgC/ha",pch=20,col=2)
+  points(Wcr1,pch=20,col=3)
+  points(Wcr2,pch=20,col=4)
+  stats[regID==0,points(WcrTot/ForLandTot,col=2)]
+  stats[regID==r_no,points(WcrTot/ForLandTot,col=1)]  
+  
+  mreg <- as.numeric(stats[regID==0,WtotTot/ForLandTot])
+  mcount <- as.numeric(stats[regID==r_no,WtotTot/ForLandTot])
+  ylim=range(Wtot0,Wtot1,Wtot2,mreg,mcount,na.rm=T)
+  plot(Wtot0,ylim=ylim, main="Wtot",ylab="kgC/ha",pch=20,col=2)
+  points(Wtot1,pch=20,col=3)
+  points(Wtot2,pch=20,col=4)
+  stats[regID==0,points(WtotTot/ForLandTot,col=2)]
+  stats[regID==r_no,points(WtotTot/ForLandTot,col=1)]  
+
+}
+
+save(Ws0, Ws1, Ws2, Wf0, Wf1, Wf2, Wb0, Wb1, Wb2,SDIinit,
+     Wdb0, Wdb1, Wdb2, Wfb0, Wfb1, Wfb2, Wcr0, Wcr1, Wcr2,
+     Wfr0, Wfr1, Wfr2, Wtot0, Wtot1, Wtot2,v0,v1,v2,ggMeanAll,
+    file=paste0("testPlotsData/reg_",klk,"_HcF",HcFactor,"_baF",baFact,"_dbhF",dbhFact,".rdata"))
+pdf(paste0("testPlotsData/plots_",klk,"_HcF",HcFactor,"_baF",baFact,"_dbhF",dbhFact,".pdf"))
 plot1()
 plot2()
 plot3()
 plot4()
+plot5()
 dev.off()
 print(klk)
-rm(list=ls())
-gc()
-}
 
+ggCountry[,,klk] <- ggMeanAll
+ls()
+# rm(list=ls())
+rm(list=ls()[-which(ls()%in%noRmList)])
+gc()
+
+
+}
+save(ggCountry,file=paste0("testPlotsData/ggCountry","_HcF",HcFactor,"_baF",baFact,"_dbhF",dbhFact,".rdata"))
 # maakNam <- read.table("/scratch/project_2000994/PREBASruns/metadata/maakunta/maakunta_numbers.txt")

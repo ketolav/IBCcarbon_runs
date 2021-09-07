@@ -5,7 +5,7 @@
 ## ---------------------------------------------------------------------
 ## MAIN SCRIPT
 ## ---------------------------------------------------------------------
-runModel <- function(sampleID,sampleRun=FALSE){
+runModel <- function(sampleID,sampleRun=FALSE,uncRun=FALSE,easyInit=FALSE){
   # print(date())
   print(paste("start sample ID",sampleID))
   sampleX <- ops[[sampleID]]
@@ -141,6 +141,10 @@ runModel <- function(sampleID,sampleRun=FALSE){
             HarvLim1 <- HarvLimX
             if(harscen == "Low"){ HarvLim1 <- HarvLimX * 0.6}
             if(harscen == "MaxSust"){HarvLim1 <- HarvLimX * 1.2}
+            if(harscen == "NoHarv"){
+              HarvLim1 <- HarvLimX * 0.
+              initPrebas$ClCut = initPrebas$defaultThin = rep(0,nSample)
+              }
           }else{
             roundWood <- HarvLim1 * roundTotWoodRatio
             enWood <- HarvLim1 - roundWood
@@ -150,6 +154,9 @@ runModel <- function(sampleID,sampleRun=FALSE){
           HarvLim1 <- HarvLimMaak*1000*sum(areas)/sum(data.all$area)
           if(harscen == "Low"){ HarvLim1 <- HarvLimMaak * 0.6}
           if(harscen == "MaxSust"){HarvLim1 <- HarvLimMaak * 1.2}
+          if(harscen == "NoHarv"){HarvLim1 <- HarvLimMaak * 0.
+            initPrebas$ClCut = initPrebas$defaultThin = rep(0,nSample)
+          }
         }          
         
         ###calculate clearcutting area for the sample
@@ -246,7 +253,7 @@ runModel <- function(sampleID,sampleRun=FALSE){
         }
         ####end initialize deadWood Volume
         if(sampleRun){
-          return(region)
+          return(list(region = region,initPrebas=initPrebas))
         }else{
         
         ####create pdf for test plots
@@ -1053,6 +1060,13 @@ testPlot <- function(outX,titleX,areas){
 
 ####Function to process NEP for drained peatlands (used in 2.1_procNep.r)
 processPeat <- function(peatXf, fertf, nppf, nepf, peatval, fertval) {
+  # peatXf = raster with peat soils
+  # fertf = raster with soilType
+  # nppf = raster of npp
+  # nepf= raster with nep
+  # peatval = ID to identify the drained peatlands -> tells which peat soil you want to treat
+  # fertval = soilType ID -> tells which siteType you want to treat
+  
   # rasters may be off by a couple pixels, resize:
   if (any(dim(fertf) < dim(peatXf))) {peatXf <- crop(peatXf,fertf)} 
   if (any(dim(peatXf) < dim(fertf))) {fertf <- crop(fertf,peatXf)}
@@ -1061,11 +1075,13 @@ processPeat <- function(peatXf, fertf, nppf, nepf, peatval, fertval) {
   if (any(dim(fertf) < dim(nepf))) {nepf <- crop(nepf,fertf)} 
   if (any(dim(peatXf) < dim(nepf))) {nepf <- crop(nepf,peatXf)}
   # mask out pixels where peatXf == peatval and fertx == fertval
-  drPeatNeg <- peatXf == peatval & fertf == fertval
-  drPeatNeg[drPeatNeg==0] <- NA
-  drPeat <- mask(nppf, drPeatNeg)
-  if (fertval == 1) {
-    drPeat <- drPeat - 270
+  drPeatNeg <- peatXf == peatval & fertf == fertval  ###selecting the pixels that match the conditions of peat and siteType
+  drPeatNeg[drPeatNeg==0] <- NA  ### assign NA to the remaining pixels
+  drPeat <- mask(nppf, drPeatNeg)  ###raster with only the pixel of interest
+  
+  ###calculate the new NEP according to the siteType (fertval)
+  if (fertval == 1) {         
+    drPeat <- drPeat - 270  
   } else if (fertval == 2) {
     drPeat <- drPeat + 70
   }
